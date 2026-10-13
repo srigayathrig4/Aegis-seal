@@ -1,10 +1,18 @@
+import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session
+import uuid
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-long-random-text"
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB limit
 DB = "database.db"
+UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {"txt", "png", "jpg", "jpeg"}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def get_db():
     conn = sqlite3.connect(DB)
@@ -21,8 +29,22 @@ def init_db():
             password_hash TEXT NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS uploads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            original_name TEXT NOT NULL,
+            stored_name TEXT NOT NULL,
+            file_type TEXT NOT NULL,
+            uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    """)
     conn.commit()
     conn.close()
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/")
 def home():
@@ -80,7 +102,49 @@ def logout():
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    return render_template("dashboard.html")
+    conn = get_db()
+    uploads = conn.execute(
+        "SELECT * FROM uploads WHERE user_id = ? ORDER BY id DESC",
+        (session["user_id"],),
+    ).fetchall()
+    conn.close()
+    return render_template("dashboard.html", uploads=uploads)
+
+@app.route("/upload", methods=["GET", "POST"])
+def upload():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        file = request.files.get("file")
+
+        if not file or file.filename == "":
+            flash("Please choose a file.", "error")
+        elif not allowed_file(file.filename):
+            flash("Only .txt, .png, .jpg and .jpeg files are allowed.", "error")
+        else:
+            original_name = secure_filename(file.filename)
+            extension = original_name.rsplit(".", 1)[1].lower()
+            stored_name = f"{uuid.uuid4().hex}.{extension}"
+            file.save(os.path.join(UPLOAD_FOLDER, stored_name))
+
+            conn = get_db()
+            conn.execute(
+                "INSERT INTO uploads (user_id, original_name, stored_name, file_type) VALUES (?, ?, ?, ?)",
+                (session["user_id"], original_name, stored_name, extension),
+            )
+            conn.commit()
+            conn.close()
+
+            flash("File uploaded successfully.", "success")
+            return redirect(url_for("dashboard"))
+
+    return render_template("upload.html")
+
+@app.errorhandler(413)
+def file_too_large(e):
+    flash("File is too large. The limit is 5 MB.", "error")
+    return redirect(url_for("upload"))
 
 if __name__ == "__main__":
     init_db()

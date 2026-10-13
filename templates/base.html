@@ -11,6 +11,7 @@
     <a class="brand" href="{{ url_for('home') }}">AEGIS-SEAL</a>
     <div>
   {% if session.user_id %}
+    <a href="{{ url_for('upload') }}">Upload</a>
     <a href="{{ url_for('dashboard') }}">Dashboard</a>
     <a href="{{ url_for('logout') }}">Logout</a>
   {% else %}
@@ -19,7 +20,11 @@
   {% endif %}
 </div>
   </nav>
-  <main>
+  <main>{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <p class="{{ 'error' if category == 'error' else 'success' }}">{{ message }}</p>
+  {% endfor %}
+{% endwith %}
     {% block content %}{% endblock %}
   </main>
 </body>

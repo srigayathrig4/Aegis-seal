@@ -2,5 +2,23 @@
 {% block title %}Dashboard - AEGIS-SEAL{% endblock %}
 {% block content %}
 <h2>Welcome, {{ session.user_name }}!</h2>
-<p>Your uploads and results will appear here soon.</p>
+<p><a class="btn" href="{{ url_for('upload') }}">Upload a file</a></p>
+
+<h3>Your uploads</h3>
+{% if uploads %}
+<div class="table-wrap">
+  <table>
+    <tr><th>File name</th><th>Type</th><th>Uploaded at</th></tr>
+    {% for item in uploads %}
+    <tr>
+      <td>{{ item.original_name }}</td>
+      <td>{{ item.file_type }}</td>
+      <td>{{ item.uploaded_at }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<p>You haven't uploaded anything yet.</p>
+{% endif %}
 {% endblock %}

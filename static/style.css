@@ -102,3 +102,9 @@ a { color: #1f5f8b; }
 /* Feature cards on home page */
 .features { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
 .features .card { flex: 1 1 220px; max-width: 260px; text-align: center; }
+.success { background: #e3f6ec; color: #17653a; padding: 10px; border-radius: 6px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.92); border-radius: 10px; overflow: hidden; }
+th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #e1e8ef; }
+th { background: #14263a; color: #fff; }
+tr:hover td { background: #f4f7fa; }
