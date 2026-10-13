@@ -2,9 +2,29 @@
 {% block title %}Dashboard - AEGIS-SEAL{% endblock %}
 {% block content %}
 <h2>Welcome, {{ session.user_name }}!</h2>
-<p><a class="btn" href="{{ url_for('upload') }}">Upload a file</a></p>
+<p>
+  <a class="btn" href="{{ url_for('check_text') }}">Check text</a>
+  <a class="btn" href="{{ url_for('upload') }}">Upload image</a>
+</p>
 
-<h3>Your uploads</h3>
+<h3>Your texts</h3>
+{% if texts %}
+<div class="table-wrap">
+  <table>
+    <tr><th>Text</th><th>Submitted at</th></tr>
+    {% for item in texts %}
+    <tr>
+      <td>{{ item.content|truncate(80) }}</td>
+      <td>{{ item.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<p>You haven't submitted any text yet.</p>
+{% endif %}
+
+<h3>Your images</h3>
 {% if uploads %}
 <div class="table-wrap">
   <table>
@@ -19,6 +39,6 @@
   </table>
 </div>
 {% else %}
-<p>You haven't uploaded anything yet.</p>
+<p>You haven't uploaded any images yet.</p>
 {% endif %}
 {% endblock %}

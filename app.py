@@ -40,6 +40,15 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS text_checks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -107,8 +116,12 @@ def dashboard():
         "SELECT * FROM uploads WHERE user_id = ? ORDER BY id DESC",
         (session["user_id"],),
     ).fetchall()
+    texts = conn.execute(
+        "SELECT * FROM text_checks WHERE user_id = ? ORDER BY id DESC",
+        (session["user_id"],),
+    ).fetchall()
     conn.close()
-    return render_template("dashboard.html", uploads=uploads)
+    return render_template("dashboard.html", uploads=uploads, texts=texts)
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
@@ -140,7 +153,30 @@ def upload():
             return redirect(url_for("dashboard"))
 
     return render_template("upload.html")
+@app.route("/text", methods=["GET", "POST"])
+def check_text():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
 
+    if request.method == "POST":
+        content = request.form.get("content", "").strip()
+
+        if len(content) < 20:
+            flash("Please enter at least 20 characters.", "error")
+        elif len(content) > 5000:
+            flash("Text is too long. The limit is 5000 characters.", "error")
+        else:
+            conn = get_db()
+            conn.execute(
+                "INSERT INTO text_checks (user_id, content) VALUES (?, ?)",
+                (session["user_id"], content),
+            )
+            conn.commit()
+            conn.close()
+            flash("Text saved successfully.", "success")
+            return redirect(url_for("dashboard"))
+
+    return render_template("text.html")
 @app.errorhandler(413)
 def file_too_large(e):
     flash("File is too large. The limit is 5 MB.", "error")

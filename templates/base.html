@@ -12,6 +12,7 @@
     <div>
   {% if session.user_id %}
     <a href="{{ url_for('upload') }}">Upload</a>
+    <a href="{{ url_for('check_text') }}">Check text</a>
     <a href="{{ url_for('dashboard') }}">Dashboard</a>
     <a href="{{ url_for('logout') }}">Logout</a>
   {% else %}

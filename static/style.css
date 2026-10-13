@@ -108,3 +108,19 @@ table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.9
 th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #e1e8ef; }
 th { background: #14263a; color: #fff; }
 tr:hover td { background: #f4f7fa; }
+.card.wide { max-width: 640px; }
+textarea {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #ccd5de;
+  border-radius: 8px;
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+textarea:focus {
+  outline: none;
+  border-color: #e9a23b;
+  box-shadow: 0 0 0 3px rgba(233, 162, 59, 0.25);
+}

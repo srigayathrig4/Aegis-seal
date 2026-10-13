@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Check text - AEGIS-SEAL{% endblock %}
+{% block content %}
+<div class="card wide">
+  <h2>Check text</h2>
+  <form method="post">
+    <label>Paste your text here (20 to 5000 characters)</label>
+    <textarea name="content" rows="10" required></textarea>
+    <button class="btn" type="submit">Submit</button>
+  </form>
+</div>
+{% endblock %}
