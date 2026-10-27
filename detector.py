@@ -19,15 +19,22 @@ class AIDetector(PreTrainedModel):
         pooled = (hidden * mask).sum(dim=1) / torch.clamp(mask.sum(dim=1), min=1e-9)
         return {"logits": self.classifier(pooled)}
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AIDetector.from_pretrained(MODEL_NAME)
-model.eval()
+_tokenizer = None
+_model = None
+
+def _load():
+    global _tokenizer, _model
+    if _model is None:
+        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        _model = AIDetector.from_pretrained(MODEL_NAME)
+        _model.eval()
 
 def ai_probability(text):
-    encoded = tokenizer(
+    _load()
+    encoded = _tokenizer(
         text, padding="max_length", truncation=True,
         max_length=768, return_tensors="pt",
     )
     with torch.no_grad():
-        out = model(encoded["input_ids"], encoded["attention_mask"])
+        out = _model(encoded["input_ids"], encoded["attention_mask"])
     return torch.sigmoid(out["logits"]).item()

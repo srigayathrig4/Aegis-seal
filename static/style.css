@@ -124,3 +124,4 @@ textarea:focus {
   border-color: #e9a23b;
   box-shadow: 0 0 0 3px rgba(233, 162, 59, 0.25);
 }
+.note { font-size: 14px; color: #3e5870; margin-top: 10px; }

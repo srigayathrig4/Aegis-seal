@@ -4,6 +4,7 @@ import uuid
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from detector import ai_probability
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-long-random-text"
@@ -49,12 +50,25 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
+    try:
+        conn.execute("ALTER TABLE text_checks ADD COLUMN ai_score REAL")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.commit()
     conn.close()
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.template_filter("verdict")
+def verdict(score):
+    if score is None:
+        return "Not analyzed"
+    if score < 40:
+        return "Likely human-written"
+    if score <= 85:
+        return "Uncertain"
+    return "Likely AI-generated"
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -161,22 +175,36 @@ def check_text():
     if request.method == "POST":
         content = request.form.get("content", "").strip()
 
-        if len(content) < 20:
-            flash("Please enter at least 20 characters.", "error")
+        if len(content.split()) < 40:
+            flash("Please enter at least 40 words for a meaningful estimate.", "error")
         elif len(content) > 5000:
             flash("Text is too long. The limit is 5000 characters.", "error")
         else:
+            score = round(ai_probability(content) * 100, 1)
             conn = get_db()
             conn.execute(
-                "INSERT INTO text_checks (user_id, content) VALUES (?, ?)",
-                (session["user_id"], content),
+                "INSERT INTO text_checks (user_id, content, ai_score) VALUES (?, ?, ?)",
+                (session["user_id"], content, score),
             )
             conn.commit()
             conn.close()
-            flash("Text saved successfully.", "success")
+            flash("Text analyzed.", "success")
             return redirect(url_for("dashboard"))
 
     return render_template("text.html")
+@app.route("/delete_text/<int:text_id>", methods=["POST"])
+def delete_text(text_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM text_checks WHERE id = ? AND user_id = ?",
+        (text_id, session["user_id"]),
+    )
+    conn.commit()
+    conn.close()
+    flash("Text deleted.", "success")
+    return redirect(url_for("dashboard"))
 @app.errorhandler(413)
 def file_too_large(e):
     flash("File is too large. The limit is 5 MB.", "error")

@@ -11,19 +11,21 @@
 {% if texts %}
 <div class="table-wrap">
   <table>
-    <tr><th>Text</th><th>Submitted at</th></tr>
+    <tr><th>Text</th><th>AI likelihood</th><th>Result</th><th>Submitted at</th></tr>
     {% for item in texts %}
     <tr>
-      <td>{{ item.content|truncate(80) }}</td>
+      <td>{{ item.content|truncate(60) }}</td>
+      <td>{% if item.ai_score is not none %}{{ item.ai_score }}%{% else %}-{% endif %}</td>
+      <td>{{ item.ai_score|verdict }}</td>
       <td>{{ item.created_at }}</td>
     </tr>
     {% endfor %}
   </table>
 </div>
+<p class="note">This is an estimate and may be wrong. Do not use it as proof.</p>
 {% else %}
 <p>You haven't submitted any text yet.</p>
 {% endif %}
-
 <h3>Your images</h3>
 {% if uploads %}
 <div class="table-wrap">
