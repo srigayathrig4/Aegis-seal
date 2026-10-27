@@ -125,3 +125,13 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(233, 162, 59, 0.25);
 }
 .note { font-size: 14px; color: #3e5870; margin-top: 10px; }
+.btn-small {
+  background: #fde8e6;
+  color: #a32619;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-small:hover { background: #f8c9c4; }
