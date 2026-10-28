@@ -11,18 +11,29 @@
 {% if texts %}
 <div class="table-wrap">
   <table>
-    <tr><th>Text</th><th>AI likelihood</th><th>Result</th><th>Submitted at</th><th></th></tr>
+    <tr>
+      <th>Text</th>
+      <th>AI likelihood</th>
+      <th>Result</th>
+      <th>Integrity</th>
+      <th>Submitted at</th>
+      <th></th>
+    </tr>
     {% for item in texts %}
     <tr>
       <td>{{ item.content|truncate(60) }}</td>
       <td>{% if item.ai_score is not none %}{{ item.ai_score }}%{% else %}-{% endif %}</td>
       <td>{{ item.ai_score|verdict }}</td>
+      <td>
+        {% if item.id in statuses %}
+          {% if statuses[item.id] %}<span class="ok">Verified</span>{% else %}<span class="bad">Changed</span>{% endif %}
+        {% else %}-{% endif %}
+      </td>
       <td>{{ item.created_at }}</td>
       <td>
         <form method="post" action="{{ url_for('delete_text', text_id=item.id) }}"
               onsubmit="return confirm('Delete this text?');">
           <button class="btn-small" type="submit">Delete</button>
-          <a class="btn" href="{{ url_for('verify') }}">Verify integrity</a>
         </form>
       </td>
     </tr>
@@ -33,7 +44,6 @@
 {% else %}
 <p>You haven't submitted any text yet.</p>
 {% endif %}
-
 
 <h3>Your images</h3>
 {% if uploads %}

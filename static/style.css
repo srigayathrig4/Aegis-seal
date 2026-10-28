@@ -135,3 +135,5 @@ textarea:focus {
   transition: background 0.2s;
 }
 .btn-small:hover { background: #f8c9c4; }
+.ok { color: #17653a; font-weight: bold; }
+.bad { color: #a32619; font-weight: bold; }

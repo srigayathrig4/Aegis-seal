@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from detector import ai_probability
 from chain_store import init_chain, add_block, verify_chain, text_fingerprint
+from chain_store import init_chain, add_block, verify_chain, text_fingerprint, text_statuses
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-long-random-text"
@@ -136,7 +137,9 @@ def dashboard():
         (session["user_id"],),
     ).fetchall()
     conn.close()
-    return render_template("dashboard.html", uploads=uploads, texts=texts)
+    statuses = text_statuses()
+    return render_template("dashboard.html", uploads=uploads, texts=texts, statuses=statuses)
+
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():

@@ -96,3 +96,38 @@ def verify_chain():
 
     conn.close()
     return len(problems) == 0, problems, len(blocks)
+def text_statuses():
+    conn = _conn()
+    blocks = conn.execute("SELECT * FROM chain_blocks ORDER BY idx").fetchall()
+    statuses = {}
+
+    for i, b in enumerate(blocks):
+        data = json.loads(b["data"])
+        if "text_id" not in data:
+            continue  # the genesis block has no text
+
+        body = {
+            "index": b["idx"],
+            "timestamp": b["timestamp"],
+            "data": data,
+            "previous_hash": b["previous_hash"],
+        }
+        ok = make_hash(body) == b["hash"]
+
+        if i > 0 and b["previous_hash"] != blocks[i - 1]["hash"]:
+            ok = False
+
+        row = conn.execute(
+            "SELECT content, ai_score FROM text_checks WHERE id = ?",
+            (data["text_id"],),
+        ).fetchone()
+        if row is not None and (
+            text_fingerprint(row["content"]) != data["content_hash"]
+            or row["ai_score"] != data["score"]
+        ):
+            ok = False
+
+        statuses[data["text_id"]] = ok
+
+    conn.close()
+    return statuses
