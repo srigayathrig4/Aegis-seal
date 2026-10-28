@@ -22,6 +22,7 @@
         <form method="post" action="{{ url_for('delete_text', text_id=item.id) }}"
               onsubmit="return confirm('Delete this text?');">
           <button class="btn-small" type="submit">Delete</button>
+          <a class="btn" href="{{ url_for('verify') }}">Verify integrity</a>
         </form>
       </td>
     </tr>

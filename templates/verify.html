@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Verify integrity - AEGIS-SEAL{% endblock %}
+{% block content %}
+<h2>Integrity check</h2>
+<p>Blocks checked: {{ total }}</p>
+
+{% if ok %}
+  <p class="success">All records are intact. Nothing was changed.</p>
+{% else %}
+  <p class="error">Tampering detected:</p>
+  <ul>
+    {% for p in problems %}
+      <li>{{ p }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<p><a class="btn" href="{{ url_for('dashboard') }}">Back to dashboard</a></p>
+{% endblock %}

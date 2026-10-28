@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from detector import ai_probability
+from chain_store import init_chain, add_block, verify_chain, text_fingerprint
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-long-random-text"
@@ -182,12 +183,20 @@ def check_text():
         else:
             score = round(ai_probability(content) * 100, 1)
             conn = get_db()
-            conn.execute(
+            cur = conn.execute(
                 "INSERT INTO text_checks (user_id, content, ai_score) VALUES (?, ?, ?)",
                 (session["user_id"], content, score),
             )
+            text_id = cur.lastrowid
             conn.commit()
             conn.close()
+
+            add_block({
+                "text_id": text_id,
+                "user_id": session["user_id"],
+                "score": score,
+                "content_hash": text_fingerprint(content),
+            })
             flash("Text analyzed.", "success")
             return redirect(url_for("dashboard"))
 
@@ -205,6 +214,14 @@ def delete_text(text_id):
     conn.close()
     flash("Text deleted.", "success")
     return redirect(url_for("dashboard"))
+
+@app.route("/verify")
+def verify():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    ok, problems, total = verify_chain()
+    return render_template("verify.html", ok=ok, problems=problems, total=total)
+
 @app.errorhandler(413)
 def file_too_large(e):
     flash("File is too large. The limit is 5 MB.", "error")
@@ -212,4 +229,5 @@ def file_too_large(e):
 
 if __name__ == "__main__":
     init_db()
+    init_chain()
     app.run(debug=True)
