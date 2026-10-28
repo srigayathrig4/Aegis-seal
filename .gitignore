@@ -4,3 +4,4 @@ A web platform to check content authenticity (work in progress).
 database.db
 uploads/
 samples/
+email_settings.py

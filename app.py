@@ -1,11 +1,11 @@
 import os
+import re
 import sqlite3
 import uuid
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from detector import ai_probability
-from chain_store import init_chain, add_block, verify_chain, text_fingerprint
 from chain_store import init_chain, add_block, verify_chain, text_fingerprint, text_statuses
 
 app = Flask(__name__)
@@ -14,13 +14,16 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB limit
 DB = "database.db"
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"txt", "png", "jpg", "jpeg"}
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_]{3,20}$")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 def get_db():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = get_db()
@@ -28,10 +31,14 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
+            username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL
         )
     """)
+    # Older databases used an "email" column: rename it, keeping all accounts
+    columns = [r["name"] for r in conn.execute("PRAGMA table_info(users)")]
+    if "email" in columns and "username" not in columns:
+        conn.execute("ALTER TABLE users RENAME COLUMN email TO username")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS uploads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,8 +66,10 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @app.template_filter("verdict")
 def verdict(score):
@@ -71,57 +80,68 @@ def verdict(score):
     if score <= 85:
         return "Uncertain"
     return "Likely AI-generated"
+
+
 @app.route("/")
 def home():
     return render_template("home.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     error = None
     if request.method == "POST":
         name = request.form["name"].strip()
-        email = request.form["email"].strip().lower()
+        username = request.form["username"].strip().lower()
         password = request.form["password"]
 
-        if len(password) < 6:
+        if not name:
+            error = "Please enter your name."
+        elif not USERNAME_PATTERN.match(username):
+            error = "User ID must be 3 to 20 characters: letters, numbers or underscore."
+        elif len(password) < 6:
             error = "Password must be at least 6 characters."
         else:
             conn = get_db()
             try:
                 conn.execute(
-                    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                    (name, email, generate_password_hash(password)),
+                    "INSERT INTO users (name, username, password_hash) VALUES (?, ?, ?)",
+                    (name, username, generate_password_hash(password)),
                 )
                 conn.commit()
+                flash("Account created. You can log in now.", "success")
                 return redirect(url_for("login"))
             except sqlite3.IntegrityError:
-                error = "This email is already registered."
+                error = "This User ID is already taken."
             finally:
                 conn.close()
     return render_template("register.html", error=error)
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
+        username = request.form["username"].strip().lower()
         password = request.form["password"]
 
         conn = get_db()
-        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         conn.close()
 
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
             return redirect(url_for("dashboard"))
-        error = "Invalid email or password."
+        error = "Invalid User ID or password."
     return render_template("login.html", error=error)
+
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
+
 
 @app.route("/dashboard")
 def dashboard():
@@ -171,6 +191,8 @@ def upload():
             return redirect(url_for("dashboard"))
 
     return render_template("upload.html")
+
+
 @app.route("/text", methods=["GET", "POST"])
 def check_text():
     if "user_id" not in session:
@@ -204,6 +226,8 @@ def check_text():
             return redirect(url_for("dashboard"))
 
     return render_template("text.html")
+
+
 @app.route("/delete_text/<int:text_id>", methods=["POST"])
 def delete_text(text_id):
     if "user_id" not in session:
@@ -218,6 +242,7 @@ def delete_text(text_id):
     flash("Text deleted.", "success")
     return redirect(url_for("dashboard"))
 
+
 @app.route("/verify")
 def verify():
     if "user_id" not in session:
@@ -225,10 +250,12 @@ def verify():
     ok, problems, total = verify_chain()
     return render_template("verify.html", ok=ok, problems=problems, total=total)
 
+
 @app.errorhandler(413)
 def file_too_large(e):
     flash("File is too large. The limit is 5 MB.", "error")
     return redirect(url_for("upload"))
+
 
 if __name__ == "__main__":
     init_db()
