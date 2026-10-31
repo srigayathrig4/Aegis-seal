@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from detector import ai_probability
 from chain_store import init_chain, add_block, verify_chain, text_fingerprint, text_statuses
+from provenance import check_image
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-long-random-text"
@@ -50,6 +51,11 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
+    for column in ("provenance TEXT", "provenance_detail TEXT"):
+        try:
+            conn.execute(f"ALTER TABLE uploads ADD COLUMN {column}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.execute("""
         CREATE TABLE IF NOT EXISTS text_checks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +86,22 @@ def verdict(score):
     if score <= 85:
         return "Uncertain"
     return "Likely AI-generated"
+
+
+@app.template_filter("origin")
+def origin(item):
+    status = item["provenance"]
+    who = item["provenance_detail"] or "an AI tool"
+    if status == "valid":
+        return f"Content Credentials found: made with {who} (signature valid)"
+    if status == "invalid":
+        return (f"Content Credentials found: made with {who}, but the signature check failed "
+                "(the image may have been changed after it was created)")
+    if status == "found":
+        return f"Content Credentials found: made with {who} (could not be validated)"
+    if status == "none":
+        return "No Content Credentials found. This does not mean the image is real."
+    return "-"
 
 
 @app.route("/")
@@ -177,12 +199,19 @@ def upload():
             original_name = secure_filename(file.filename)
             extension = original_name.rsplit(".", 1)[1].lower()
             stored_name = f"{uuid.uuid4().hex}.{extension}"
-            file.save(os.path.join(UPLOAD_FOLDER, stored_name))
+            saved_path = os.path.join(UPLOAD_FOLDER, stored_name)
+            file.save(saved_path)
+
+            if extension in ("png", "jpg", "jpeg"):
+                provenance, detail = check_image(saved_path)
+            else:
+                provenance, detail = "n/a", ""
 
             conn = get_db()
             conn.execute(
-                "INSERT INTO uploads (user_id, original_name, stored_name, file_type) VALUES (?, ?, ?, ?)",
-                (session["user_id"], original_name, stored_name, extension),
+                "INSERT INTO uploads (user_id, original_name, stored_name, file_type, provenance, provenance_detail) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (session["user_id"], original_name, stored_name, extension, provenance, detail),
             )
             conn.commit()
             conn.close()

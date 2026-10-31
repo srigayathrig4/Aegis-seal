@@ -4,7 +4,8 @@
 <h2>Welcome, {{ session.user_name }}!</h2>
 <p>
   <a class="btn" href="{{ url_for('check_text') }}">Check text</a>
-  <a class="btn" href="{{ url_for('upload') }}">Upload image</a>
+  <a class="btn" href="{{ url_for('upload') }}">Upload file</a>
+  <a class="btn" href="{{ url_for('verify') }}">Verify integrity</a>
 </p>
 
 <h3>Your texts</h3>
@@ -45,21 +46,28 @@
 <p>You haven't submitted any text yet.</p>
 {% endif %}
 
-<h3>Your images</h3>
+<h3>Your files</h3>
 {% if uploads %}
 <div class="table-wrap">
   <table>
-    <tr><th>File name</th><th>Type</th><th>Uploaded at</th></tr>
+    <tr>
+      <th>File name</th>
+      <th>Type</th>
+      <th>Origin check</th>
+      <th>Uploaded at</th>
+    </tr>
     {% for item in uploads %}
     <tr>
       <td>{{ item.original_name }}</td>
       <td>{{ item.file_type }}</td>
+      <td>{{ item|origin }}</td>
       <td>{{ item.uploaded_at }}</td>
     </tr>
     {% endfor %}
   </table>
 </div>
+<p class="note">This check only looks for Content Credentials added by some AI tools. It does not detect AI images in general, and a missing credential does not mean an image is real.</p>
 {% else %}
-<p>You haven't uploaded any images yet.</p>
+<p>You haven't uploaded any files yet.</p>
 {% endif %}
 {% endblock %}
