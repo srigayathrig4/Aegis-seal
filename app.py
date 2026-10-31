@@ -100,7 +100,8 @@ def origin(item):
     if status == "found":
         return f"Content Credentials found: made with {who} (could not be validated)"
     if status == "none":
-        return "No Content Credentials found. This does not mean the image is real."
+        return ("No Content Credentials found. This does not mean the image is real. "
+            "You can also check it at openai.com/verify.")
     return "-"
 
 
